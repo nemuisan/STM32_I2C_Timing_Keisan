@@ -34,4 +34,6 @@ public:
 	CString I2CFREQ;
 	CString KERNELFREQ;
 	afx_msg void OnBnClickedButton1();
+	CString Tfall;
+	CString Trise;
 };

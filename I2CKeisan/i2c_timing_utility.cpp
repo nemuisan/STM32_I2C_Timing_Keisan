@@ -51,6 +51,10 @@
 #define SEC2NSEC                               1000000000UL
 
 #define BUS_I2Cx_FREQUENCY                     100000U /* Frequency of I2Cn = 100 KHz*/
+
+/* comment to use textbox trise & tfall val */
+//#define USE_INTERLVAL
+
 /* Private Types ----------------------------------------------------------*/
 typedef struct
 {
@@ -79,9 +83,10 @@ typedef struct
 /* Private Private Constants ---------------------------------------------------------*/
 static const I2C_Charac_t I2C_Charac[3] = {
 	/*   freq, freq_min, freq_max, hddat_min, vddat_max, sudat_min, lscl_min, hscl_min, trise, tfall, dnf                    */
-	{  100000,    99000,   101000,         0,      3450,       250,     4700,     4000,   100,    10, I2C_DIGITAL_FILTER_COEF },
-	{  400000,   399000,   401000,         0,       900,       100,     1300,      600,   100,    10, I2C_DIGITAL_FILTER_COEF },
-	{ 1000000,   990000,  1010000,         0,       450,        50,      500,      260,    60,     6, I2C_DIGITAL_FILTER_COEF }
+	{  100000,    90000,   110000,         0,      3450,       250,     4700,     4000,   100,    10, I2C_DIGITAL_FILTER_COEF },
+	{  400000,   360000,   440000,         0,       900,       100,     1300,      600,   100,    10, I2C_DIGITAL_FILTER_COEF },
+	{ 1000000,   950000,  1050000,         0,       450,        50,      500,      260,    60,     6, I2C_DIGITAL_FILTER_COEF }
+
 };
 #if 0 // Original Value.... not suitable for me...
 static const I2C_Charac_t I2C_Charac[3] = {
@@ -99,6 +104,10 @@ static uint32_t      I2c_valid_timing_nbr = 0;
 /* Private function prototypes -----------------------------------------------*/
 static uint32_t I2C_Compute_SCLL_SCLH(uint32_t clock_src_freq, uint32_t I2C_speed);
 static void     I2C_Compute_PRESC_SCLDEL_SDADEL(uint32_t clock_src_freq, uint32_t I2C_speed);
+
+/* Groval variables ----------------------------------------------------------*/
+volatile uint32_t t_trise;
+volatile uint32_t t_tfall;
 
 /* Exported functions ------------------------------------------------------- */
 /**
@@ -167,16 +176,27 @@ static void I2C_Compute_PRESC_SCLDEL_SDADEL(uint32_t clock_src_freq, uint32_t I2
      tPRESC = (PRESC+1) x tI2CCLK
      SDADEL >= {tf +tHD;DAT(min) - tAF(min) - tDNF - [3 x tI2CCLK]} / {tPRESC}
      SDADEL <= {tVD;DAT(max) - tr - tAF(max) - tDNF- [4 x tI2CCLK]} / {tPRESC} */
-
+#if defined(USE_INTERLVAL)
   tsdadel_min = (int32_t)I2C_Charac[I2C_speed].tfall + (int32_t)I2C_Charac[I2C_speed].hddat_min -
+#else
+  tsdadel_min = (int32_t)t_tfall + (int32_t)I2C_Charac[I2C_speed].hddat_min -
+#endif
     (int32_t)tafdel_min - (int32_t)(((int32_t)I2C_Charac[I2C_speed].dnf + 3) * (int32_t)ti2cclk);
 
+#if defined(USE_INTERLVAL)
   tsdadel_max = (int32_t)I2C_Charac[I2C_speed].vddat_max - (int32_t)I2C_Charac[I2C_speed].trise -
+#else
+  tsdadel_max = (int32_t)I2C_Charac[I2C_speed].vddat_max - (int32_t)t_trise -
+#endif
     (int32_t)tafdel_max - (int32_t)(((int32_t)I2C_Charac[I2C_speed].dnf + 4) * (int32_t)ti2cclk);
 
 
   /* {[tr+ tSU;DAT(min)] / [tPRESC]} - 1 <= SCLDEL */
+#if defined(USE_INTERLVAL)
   tscldel_min = (int32_t)I2C_Charac[I2C_speed].trise + (int32_t)I2C_Charac[I2C_speed].sudat_min;
+#else
+  tscldel_min = (int32_t)t_trise + (int32_t)I2C_Charac[I2C_speed].sudat_min;
+#endif
 
   if (tsdadel_min <= 0)
   {
@@ -275,7 +295,11 @@ static uint32_t I2C_Compute_SCLL_SCLH (uint32_t clock_src_freq, uint32_t I2C_spe
           uint32_t tscl_h = tafdel_min + dnf_delay + (2U * ti2cclk) + ((sclh + 1U) * tpresc);
 
           /* tSCL = tf + tLOW + tr + tHIGH */
+#if defined(USE_INTERLVAL)
           uint32_t tscl = tscl_l + tscl_h + I2C_Charac[I2C_speed].trise + I2C_Charac[I2C_speed].tfall;
+#else
+		  uint32_t tscl = tscl_l + tscl_h + t_trise + t_tfall;
+#endif
 
           if ((tscl >= clk_min) && (tscl <= clk_max) && (tscl_h >= I2C_Charac[I2C_speed].hscl_min) && (ti2cclk < tscl_h))
           {

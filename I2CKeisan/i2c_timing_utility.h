@@ -27,6 +27,10 @@
 /* Exported functions ------------------------------------------------------- */
 uint32_t I2C_GetTiming(uint32_t clock_src_freq, uint32_t i2c_freq);
 
+/* Externals ---------------------------------------------------------------- */
+extern volatile uint32_t t_trise;
+extern volatile uint32_t t_tfall;
+
 #endif /* __I2C_TIMING_UTILITY_H */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

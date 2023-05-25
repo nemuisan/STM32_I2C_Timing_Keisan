@@ -18,12 +18,12 @@
 
 // CI2CKeisanDlg ダイアログ
 
-
-
 CI2CKeisanDlg::CI2CKeisanDlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_I2CKEISAN_DIALOG, pParent)
 	, I2CFREQ(_T("100"))
 	, KERNELFREQ(_T("48"))
+	, Trise(_T("100"))
+	, Tfall(_T("10"))
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
@@ -35,6 +35,10 @@ void CI2CKeisanDlg::DoDataExchange(CDataExchange* pDX)
 	DDV_MaxChars(pDX, I2CFREQ, 4);
 	DDX_Text(pDX, IDC_EDIT1, KERNELFREQ);
 	DDV_MaxChars(pDX, KERNELFREQ, 4);
+	DDX_Text(pDX, IDC_EDIT5, Trise);
+	DDV_MaxChars(pDX, Trise, 4);
+	DDX_Text(pDX, IDC_EDIT4, Tfall);
+	DDV_MaxChars(pDX, Tfall, 4);
 }
 
 BEGIN_MESSAGE_MAP(CI2CKeisanDlg, CDialogEx)
@@ -108,11 +112,14 @@ void CI2CKeisanDlg::OnBnClickedButton1()
 	uint32_t ukfreq = _ttoi(KERNELFREQ);
 	uint32_t i2cfreq = _ttoi(I2CFREQ);
 
+	t_trise = _ttoi(Trise);
+    t_tfall = _ttoi(Tfall);
+
 	if (ukfreq > 300) {
 		AfxMessageBox(_T("Kernel-Freq value must be below 300(MHz)!"));
 		return;
 	}
-	if (!((i2cfreq <= 1000) && (i2cfreq >= 100)) ) {
+	if (!((i2cfreq <= 1100) && (i2cfreq >= 90)) ) {
 		AfxMessageBox(_T("I2C-Clock value must be 100,400,1000(kHz)!"));
 		return;
 	}
@@ -122,7 +129,7 @@ void CI2CKeisanDlg::OnBnClickedButton1()
 
 	uint32_t setval = I2C_GetTiming(ukfreq, i2cfreq);
 
-	textval.Format(_T("0x%X"), setval);
+	textval.Format(_T("0x%08XUL"), setval);
 
 	GetDlgItem(IDC_EDIT3)->SetWindowText(textval);
 	UpdateData(false);
